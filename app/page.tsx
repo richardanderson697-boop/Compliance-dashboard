@@ -1,4 +1,4 @@
-import ComplianceDashboard from "../components/compliance-dashboard"
+import ComplianceDashboard from "../compliance-dashboard"
 
 export default function Page() {
   return <ComplianceDashboard />
