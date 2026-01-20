@@ -26,7 +26,7 @@ export default function ComplianceDashboard() {
     setStatus({ type: "loading", message: "Syncing..." })
     
     try {
-      const res = await fetch(`${API_URL}/api/v1/regulations`, {
+      const res = await fetch(`${API_URL}/api/v1/public/regulations`, {
         headers: { 
           "Authorization": `Bearer ${API_KEY}`,
           "Content-Type": "application/json"
