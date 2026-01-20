@@ -1,46 +1,51 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  FileText, Download, Search, Filter, Calendar, Building2,
-  AlertCircle, CheckCircle2, Clock, TrendingUp, BarChart3,
-  ExternalLink, RefreshCw, Send,
-} from "lucide-react"
+import { FileText, RefreshCw, Play, BrainCircuit, Search, Database } from "lucide-react"
 
-export default function ComplianceDashboard() {
-  // Use Environment Variables (no more hardcoded keys for GitHub to block)
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ""
-
+export default function ProfessionalDashboard() {
   const [regulations, setRegulations] = useState([])
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState(null)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const [aiResponse, setAiResponse] = useState("")
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://assure-compliance-production.up.railway.app"
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ""
+
+  // 1. Professional Data Fetching
   const loadData = async () => {
-    if (!API_URL) {
-      setStatus({ type: "error", message: "API URL not configured in Railway" })
-      return
-    }
-    
     setLoading(true)
-    setStatus({ type: "loading", message: "Syncing..." })
-    
     try {
       const res = await fetch(`${API_URL}/api/v1/public/regulations`, {
+        headers: { "Authorization": `Bearer ${API_KEY}` }
+      })
+      const data = await res.json()
+      setRegulations(Array.isArray(data) ? data : (data.data || []))
+    } catch (err) {
+      console.error("Fetch failed:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 2. Trigger the Real Playwright Scraper
+  const startScraper = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/v1/scrape`, {
+        method: "POST",
         headers: { 
           "Authorization": `Bearer ${API_KEY}`,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ url: "https://www.federalregister.gov", jurisdiction: "US" })
       })
-      
-      if (!res.ok) throw new Error(`Status: ${res.status}`)
-      
-      const data = await res.json()
-      const extracted = Array.isArray(data) ? data : (data.regulations || data.data || [])
-      setRegulations(extracted)
-      setStatus({ type: "success", message: `Loaded ${extracted.length} items` })
-    } catch (err: any) {
-      setStatus({ type: "error", message: err.message || "Connection Failed" })
+      const job = await res.json()
+      setJobId(job.job_id) // Your main.py returns this!
+    } catch (err) {
+      alert("Scraper failed to start")
     } finally {
       setLoading(false)
     }
@@ -49,81 +54,69 @@ export default function ComplianceDashboard() {
   useEffect(() => { loadData() }, [])
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-600 p-3 rounded-xl shadow-blue-200 shadow-lg">
-            <FileText className="text-white w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Compliance Dashboard</h1>
-            <p className="text-sm text-gray-500 font-medium">Railway Backend Status: {status?.message}</p>
-          </div>
+    <div className="min-h-screen bg-slate-50 p-8 font-sans">
+      {/* Header with Control Panel */}
+      <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Database className="text-blue-600" /> Regulatory Intelligence
+          </h1>
+          <p className="text-slate-500 text-sm">PostgreSQL Backend: Connected</p>
         </div>
-        <button 
-          onClick={loadData} 
-          disabled={loading}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <RefreshCw size={20} className={loading ? "animate-spin text-blue-600" : "text-gray-400"} />
-        </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <TrendingUp className="text-blue-600 mb-4 w-8 h-8" />
-          <div className="text-3xl font-bold text-gray-900">{regulations.length}</div>
-          <div className="text-sm font-medium text-gray-500">Regulations Tracked</div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <CheckCircle2 className="text-green-600 mb-4 w-8 h-8" />
-          <div className="text-3xl font-bold text-gray-900">Active</div>
-          <div className="text-sm font-medium text-gray-500">Scraper Status</div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <Building2 className="text-purple-600 mb-4 w-8 h-8" />
-          <div className="text-3xl font-bold text-gray-900">Multi</div>
-          <div className="text-sm font-medium text-gray-500">Jurisdiction Sync</div>
+        <div className="flex gap-4">
+          <button 
+            onClick={startScraper}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all font-semibold shadow-md shadow-blue-100"
+          >
+            <Play size={18} /> Start US Scrape
+          </button>
+          <button onClick={loadData} className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+            <RefreshCw className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
 
-      {/* List */}
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b bg-gray-50/50">
-          <h2 className="font-bold text-gray-800">Regulatory Intelligence Feed</h2>
+      {/* Main Content: AI Search + Data Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: AI Analysis (Using your main.py /analyze endpoint) */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+              <BrainCircuit className="text-purple-600" /> AI Regulatory Analyst
+            </h3>
+            <textarea 
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm mb-4"
+              placeholder="Ask about compliance risks..."
+              rows={4}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button className="w-full py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-black transition-all">
+              Analyze Regulations
+            </button>
+          </div>
         </div>
-        <div className="divide-y divide-gray-50">
-          {regulations.length > 0 ? (
-            regulations.map((reg: any) => (
-              <div key={reg.id} className="p-5 hover:bg-blue-50/30 transition-colors flex justify-between items-center group">
-                <div className="space-y-1">
-                  <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                    {reg.title || "Legislative Update"}
-                  </div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    {reg.agency || "Agency Pending Review"} • {reg.jurisdiction || "Global"}
-                  </div>
+
+        {/* Right: Data Feed */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b bg-slate-50 font-bold text-slate-700">Intelligence Feed</div>
+          <div className="divide-y divide-slate-100">
+            {regulations.length > 0 ? (
+              regulations.map((reg: any) => (
+                <div key={reg.id} className="p-4 hover:bg-slate-50 flex justify-between items-center group">
+                   <div>
+                      <div className="font-semibold text-slate-900">{reg.title}</div>
+                      <div className="text-xs text-slate-400 uppercase font-bold tracking-widest">{reg.jurisdiction}</div>
+                   </div>
+                   <Search className="text-slate-300 group-hover:text-blue-600 transition-colors cursor-pointer" size={20} />
                 </div>
-                <div className="flex gap-3">
-                  <button className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all">
-                    <Search size={18} />
-                  </button>
-                  <button className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-green-600 hover:text-white transition-all">
-                    <Download size={18} />
-                  </button>
-                </div>
+              ))
+            ) : (
+              <div className="p-12 text-center text-slate-400 italic">
+                {jobId ? `Scraper Job ${jobId} in progress...` : "Feed is currently empty. Start a scrape to begin."}
               </div>
-            ))
-          ) : (
-            <div className="p-20 text-center">
-              <RefreshCw className={`w-10 h-10 mx-auto mb-4 text-gray-200 ${loading ? "animate-spin" : ""}`} />
-              <p className="text-gray-400 font-medium">
-                {loading ? "Establishing secure connection to Railway..." : "Intelligence feed is currently empty."}
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
