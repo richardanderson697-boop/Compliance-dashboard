@@ -1,81 +1,63 @@
 "use client"
-
 import { useState, useEffect } from "react"
-import { Play, Database, Activity, Terminal, AlertTriangle } from "lucide-react"
+import { Terminal, Activity, Play, RefreshCw } from "lucide-react"
 
-export default function ProfessionalMobileUI() {
-  const [regulations, setRegulations] = useState([])
+export default function AndroidProductionUI() {
   const [logs, setLogs] = useState<string[]>([])
-  const [isScraping, setIsScraping] = useState(false)
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://assure-compliance-production.up.railway.app"
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "c043ed9d-bc39-455e-9a8a-ad35542dadc9"
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ""
 
-  const addLog = (msg: string) => setLogs(prev => [msg, ...prev].slice(0, 5))
+  const addLog = (msg: string) => setLogs(p => [`${new Date().toLocaleTimeString()}: ${msg}`, ...p].slice(0, 10))
 
-  const runScraper = async () => {
-    setIsScraping(true)
-    addLog("🚀 Requesting Playwright launch...")
+  const runDiagnostics = async () => {
+    setLoading(true)
+    addLog(`Testing connection to: ${API_URL}`)
     try {
-      const res = await fetch(`${API_URL}/api/v1/scrape`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "https://www.federalregister.gov", jurisdiction: "US" })
+      const res = await fetch(`${API_URL}/api/v1/public/regulations`, {
+        headers: { "Authorization": `Bearer ${API_KEY}` }
       })
-      const data = await res.json()
-      addLog(`✅ Job started: ${data.job_id.slice(0,8)}`)
-    } catch (err) {
-      addLog("❌ Connection Error: Backend unreachable")
+      if (res.ok) {
+        const json = await res.json()
+        setData(json)
+        addLog(`✅ Connected. Found ${json.length} records.`)
+      } else {
+        addLog(`❌ Server Error: ${res.status}. Check backend logs.`)
+      }
+    } catch (e: any) {
+      addLog(`❌ Network Error: ${e.message}. Check if API_URL is correct.`)
     } finally {
-      setIsScraping(false)
+      setLoading(false)
     }
   }
 
+  useEffect(() => { if(API_URL) runDiagnostics() }, [])
+
   return (
-    <div className="min-h-screen bg-black text-white p-4 font-mono">
-      {/* Mobile-Friendly Header */}
-      <div className="flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Activity className="text-green-500" /> COMPLIANCE_OS
-          </h1>
-          <p className="text-[10px] text-zinc-500">ENGINE: PLAYWRIGHT + GPT-4</p>
-        </div>
-        <button 
-          onClick={runScraper}
-          disabled={isScraping}
-          className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold active:scale-95 transition-all"
-        >
-          {isScraping ? "RUNNING..." : "TRIGGER SCRAPE"}
-        </button>
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 font-mono text-sm">
+      <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+        <h1 className="font-bold flex items-center gap-2 text-blue-400"><Activity size={18}/> SYSTEM_LIVE</h1>
+        <button onClick={runDiagnostics} className="bg-blue-600 px-3 py-1 rounded text-xs">RETRY_SYNC</button>
       </div>
 
-      {/* Real-time Terminal Logs (Crucial for Android users) */}
-      <div className="bg-zinc-900 rounded-lg p-3 mb-6 border border-zinc-800">
-        <div className="flex items-center gap-2 text-zinc-500 text-[10px] mb-2 uppercase font-bold">
-          <Terminal size={12} /> System Logs
-        </div>
-        <div className="space-y-1">
-          {logs.length > 0 ? logs.map((log, i) => (
-            <div key={i} className="text-xs text-zinc-300">{`> ${log}`}</div>
-          )) : <div className="text-xs text-zinc-600 italic underline">Waiting for trigger...</div>}
-        </div>
+      {/* Terminal - This is your Android Inspector */}
+      <div className="bg-black rounded-lg p-3 mb-6 border border-slate-800 h-48 overflow-y-auto">
+        <p className="text-[10px] text-slate-500 mb-2 flex items-center gap-1"><Terminal size={12}/> DEBUG_CONSOLE</p>
+        {logs.map((log, i) => <div key={i} className="text-[11px] text-emerald-500 mb-1">{`> ${log}`}</div>)}
       </div>
 
-      {/* Data Results */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Database Records</h3>
-        {regulations.length > 0 ? (
-          regulations.map((reg: any) => (
-            <div key={reg.id} className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-              <div className="text-sm font-bold text-white mb-1">{reg.title}</div>
-              <div className="text-[10px] text-green-500 uppercase font-bold tracking-tighter">{reg.jurisdiction}</div>
-            </div>
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 opacity-30">
-            <AlertTriangle size={40} />
-            <p className="text-xs mt-2 italic">Database Empty: Run Scraper to begin.</p>
+        <h2 className="text-[10px] font-bold text-slate-500 uppercase">Database_Feed</h2>
+        {data.length > 0 ? data.map((reg: any) => (
+          <div key={reg.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div className="font-bold">{reg.title}</div>
+            <div className="text-[10px] text-blue-500 mt-1 uppercase">{reg.jurisdiction}</div>
+          </div>
+        )) : (
+          <div className="py-12 text-center border border-dashed border-slate-800 rounded-xl text-slate-600 italic">
+            No data found. Start scraper to populate database.
           </div>
         )}
       </div>
