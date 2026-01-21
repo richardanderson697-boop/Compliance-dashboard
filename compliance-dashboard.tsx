@@ -1,81 +1,51 @@
-"use client"
-import { useState, useEffect } from "react"
-import { Terminal, Database, Activity, WifiOff, AlertTriangle } from "lucide-react"
+import React, { useEffect, useState } from 'react';
+import { Shield, ExternalLink, Calendar, Info } from 'lucide-react';
 
-export default function AndroidProductionUI() {
-  const [logs, setLogs] = useState<string[]>([])
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
+export const RegulationFeed = () => {
+  const [regulations, setRegulations] = useState([]);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ""
-
-  const addLog = (msg: string) => setLogs(p => [`${new Date().toLocaleTimeString()}: ${msg}`, ...p].slice(0, 8))
-
-  const loadData = async () => {
-    if (!API_URL) {
-      addLog("❌ API_URL is missing in Railway Variables")
-      return
-    }
-
-    setLoading(true)
-    // We try the 'public' route which is defined in your main.py
-    const targetUrl = `${API_URL}/api/v1/public/regulations`
-    addLog(`Testing: ${targetUrl}`)
-
-    try {
-      const res = await fetch(targetUrl, {
-        headers: { 
-          "Authorization": `Bearer ${API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      })
-      
-      if (res.ok) {
-        const json = await res.json()
-        setData(json)
-        addLog(`✅ Connected! Found ${json.length} items.`)
-      } else {
-        addLog(`❌ Error ${res.status}: Check if /public/ route is live.`)
-      }
-    } catch (e: any) {
-      addLog(`❌ Network Error: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    // Fetching from the endpoint verified in your logs
+    fetch('/api/v1/public/regulations')
+      .then(res => res.json())
+      .then(data => setRegulations(data));
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 font-mono text-sm">
-      <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <h1 className="font-bold flex items-center gap-2 text-blue-400"><Activity size={18}/> SYSTEM_OS</h1>
-        <button onClick={loadData} className="bg-blue-600 px-4 py-2 rounded text-xs font-bold active:bg-blue-800 transition-all">RETRY_SYNC</button>
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">Regulatory Intelligence</h1>
+        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+          Live Scanners Active
+        </span>
       </div>
 
-      {/* Debug Console - Essential for Android Troubleshooting */}
-      <div className="bg-black rounded-lg p-3 mb-6 border border-slate-800 h-40 overflow-y-auto shadow-inner">
-        <p className="text-[10px] text-slate-500 mb-2 flex items-center gap-1"><Terminal size={12}/> DEBUG_CONSOLE</p>
-        {logs.map((log, i) => (
-          <div key={i} className={`text-[11px] mb-1 ${log.includes('❌') ? 'text-red-400' : 'text-emerald-500'}`}>{`> ${log}`}</div>
+      <div className="grid gap-4">
+        {regulations.map((reg) => (
+          <div key={reg.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex justify-between start mb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-slate-800">{reg.title}</h3>
+              </div>
+              <a href={reg.source_url} target="_blank" className="text-slate-400 hover:text-blue-600">
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+            
+            <p className="text-slate-600 text-sm mb-4 line-clamp-2">{reg.raw_text}</p>
+            
+            <div className="flex gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <Info className="w-3 h-3" /> {reg.agency}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Published: {new Date(reg.publication_date).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
         ))}
       </div>
-
-      <div className="space-y-4">
-        <h2 className="text-[10px] font-bold text-slate-500 uppercase px-1">PostgreSQL_Feed</h2>
-        {data.length > 0 ? data.map((reg: any) => (
-          <div key={reg.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
-            <div className="font-bold text-white">{reg.title}</div>
-            <div className="text-[10px] text-blue-500 mt-1 uppercase font-bold tracking-tighter">{reg.jurisdiction}</div>
-          </div>
-        )) : (
-          <div className="py-16 text-center border-2 border-dashed border-slate-900 rounded-2xl flex flex-col items-center gap-3 opacity-50">
-             <AlertTriangle size={32} />
-             <p className="text-[11px] px-10 italic">Backend is running, but database is empty. You must trigger a scrape to see data.</p>
-          </div>
-        )}
-      </div>
     </div>
-  )
-}
+  );
+};
